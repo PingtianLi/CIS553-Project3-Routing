@@ -35,7 +35,7 @@ class DVrouter(Router):
             content = loads(packet.content)
             for k, v in content.iteritems():
                 if k != self.addr:
-                    if k not in self.table:
+                    if k not in self.table or self.table[k]["cost"] == self.infinity:
                         # Modify cost later
                         self.table[k] = {
                             "cost": v["cost"] + self.table[packet.srcAddr]["cost"],
@@ -47,29 +47,31 @@ class DVrouter(Router):
                             self.table[k]["cost"] = self.table[packet.srcAddr]["cost"] + v["cost"]
                             self.table[k]["nextHop"] = packet.srcAddr
                             self.table[k]["port"] = self.table[packet.srcAddr]["port"]
+                    # print(self.table[k]["cost"])
 
-            print("SOURCE ADDRESS: ", packet.srcAddr)
-            print("DESTINATION ADDRESS: ", packet.dstAddr)
-            print(content)
+            # print("SOURCE ADDRESS: ", packet.srcAddr)
+            # print("DESTINATION ADDRESS: ", packet.dstAddr)
+            # print(content)
         #self.send(port, packet)
 
     def handleNewLink(self, port, endpoint, cost):
         """TODO: handle new link"""
         # should store the argument values in a data structure to use for routing.
         # If you want to send packets along this link, call self.send(port, packet)
-        if endpoint not in self.table:
+        if endpoint not in self.table or self.table[endpoint]["cost"] == self.infinity:
             self.table[endpoint] = {"cost": cost, "nextHop": endpoint, "port": port}
-            #print("SOURCE ADDRESS: ", self.addr)
-            # print(dumps(self.table))
-        # else:
-        #     if cost < self.table[endpoint]["cost"]:
-        #         self.table[endpoint]["cost"] = cost
-        #         self.table[endpoint]["nextHop"] = port
+        else:
+            if cost < self.table[endpoint]["cost"]:
+                self.table[endpoint]["cost"] = cost
+                self.table[endpoint]["nextHop"] = endpoint
+                self.table[endpoint]["port"] = port
 
     def handleRemoveLink(self, port):
         """TODO: handle removed link"""
-
-        pass
+        for k, v in self.table.iteritems():
+            if v["port"] == port:
+                v["cost"] = self.infinity
+                v["nextHop"] = None
 
     def handleTime(self, timeMillisecs):
         """TODO: handle current time"""
@@ -82,4 +84,4 @@ class DVrouter(Router):
 
     def debugString(self):
         """TODO: generate a string for debugging in network visualizer"""
-        return "Hello"
+        return dumps(self.table)
