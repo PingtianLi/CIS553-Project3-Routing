@@ -70,8 +70,8 @@ class Network:
         """Parse links from linkParams, dict"""
         links = {}
         for addr1, addr2, p1, p2, c12, c21 in linkParams:
-            print "{}:{} --cost:{}--> {}:{} --cost:{}--> {}:{}".format(
-                addr1, p1, c12, addr2, p2, c21, addr1, p1)
+            # print "{}:{} --cost:{}--> {}:{} --cost:{}--> {}:{}".format(
+            #     addr1, p1, c12, addr2, p2, c21, addr1, p1)
             link = Link(addr1, addr2, c12, c21, self.latencyMultiplier)
             links[(addr1, addr2)] = (p1, p2, c12, c21, link)
         return links

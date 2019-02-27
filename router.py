@@ -57,7 +57,7 @@ class Router:
                     # pprint(vars(packet))
 
             self.handleTime(timeMillisecs)
-            print(timeMillisecs, self.heartbeatTime)
+            #print(timeMillisecs)
 
     def send(self, port, packet):
         """Send a packet out given port"""
