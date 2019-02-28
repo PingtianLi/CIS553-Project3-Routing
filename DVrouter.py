@@ -30,53 +30,67 @@ class DVrouter(Router):
         if packet.isTraceroute():
             if packet.dstAddr in self.table:
                 self.send(self.table[packet.dstAddr]["port"], packet)
+
         elif packet.isRouting():
-            #     #print("THIS IS THE PACKET", self.addr, packet.dstAddr)
             content = loads(packet.content)
             for k, v in content.iteritems():
                 if k != self.addr:
-                    if k not in self.table or self.table[k]["cost"] == self.infinity:
-                        # Modify cost later
+                    if v["cost"] == self.infinity and v['nextHop'] == packet.srcAddr:
+                        self.table[k]["cost"] = self.infinity
+                        self.table[k]['nextHop'] = None  # packet.srcAddr
+                        self.table[k]['port'] = None
+
+                        for k, v in self.table.iteritems():
+                            # if k != v['nextHop']:
+                            packet = Packet(Packet.ROUTING, self.addr, k)
+                            packet.content = dumps(self.table)
+                            self.send(v["port"], packet)
+
+                    if k not in self.table:
                         self.table[k] = {
                             "cost": v["cost"] + self.table[packet.srcAddr]["cost"],
                             "nextHop": packet.srcAddr,
-                            "port": self.table[packet.srcAddr]["port"]
+                            "port": self.table[packet.srcAddr]["port"],
                         }
                     else:
                         if self.table[packet.srcAddr]["cost"] + v["cost"] < self.table[k]["cost"]:
                             self.table[k]["cost"] = self.table[packet.srcAddr]["cost"] + v["cost"]
                             self.table[k]["nextHop"] = packet.srcAddr
                             self.table[k]["port"] = self.table[packet.srcAddr]["port"]
-                    # print(self.table[k]["cost"])
-
-            # print("SOURCE ADDRESS: ", packet.srcAddr)
-            # print("DESTINATION ADDRESS: ", packet.dstAddr)
-            # print(content)
-        #self.send(port, packet)
 
     def handleNewLink(self, port, endpoint, cost):
         """TODO: handle new link"""
         # should store the argument values in a data structure to use for routing.
         # If you want to send packets along this link, call self.send(port, packet)
-        if endpoint not in self.table or self.table[endpoint]["cost"] == self.infinity:
+        if endpoint not in self.table or cost < self.table[endpoint]["cost"]:
             self.table[endpoint] = {"cost": cost, "nextHop": endpoint, "port": port}
-        else:
-            if cost < self.table[endpoint]["cost"]:
-                self.table[endpoint]["cost"] = cost
-                self.table[endpoint]["nextHop"] = endpoint
-                self.table[endpoint]["port"] = port
+        for k, v in self.table.iteritems():
+            # if k != v['nextHop']:
+            packet = Packet(Packet.ROUTING, self.addr, k)
+            packet.content = dumps(self.table)
+            self.send(v["port"], packet)
 
     def handleRemoveLink(self, port):
         """TODO: handle removed link"""
         for k, v in self.table.iteritems():
             if v["port"] == port:
-                v["cost"] = self.infinity
-                v["nextHop"] = None
+                # keysToRemove.append(k)
+                self.table[k] = {
+                    "cost": self.infinity,
+                    "nextHop": None,
+                    "port": None,
+                }
+        for k, v in self.table.iteritems():
+            # if k != v['nextHop']:
+            packet = Packet(Packet.ROUTING, self.addr, k)
+            packet.content = dumps(self.table)
+            self.send(v["port"], packet)
 
     def handleTime(self, timeMillisecs):
         """TODO: handle current time"""
         if timeMillisecs - self.last_time > self.heartbeatTime:
             for k, v in self.table.iteritems():
+                # if k != v['nextHop']:
                 packet = Packet(Packet.ROUTING, self.addr, k)
                 packet.content = dumps(self.table)
                 self.send(v["port"], packet)
@@ -84,4 +98,4 @@ class DVrouter(Router):
 
     def debugString(self):
         """TODO: generate a string for debugging in network visualizer"""
-        return dumps(self.table)
+        return ":("

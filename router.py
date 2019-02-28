@@ -2,7 +2,6 @@ import time
 import sys
 import thread
 import Queue
-from pprint import pprint
 
 
 class Router:
@@ -53,11 +52,8 @@ class Router:
 
                 if packet:
                     self.handlePacket(port, packet)
-                    # pprint(vars(self.links))
-                    # pprint(vars(packet))
-
+                    # print("CONTENT", packet.content, packet.route, packet.srcAddr,)
             self.handleTime(timeMillisecs)
-            #print(timeMillisecs)
 
     def send(self, port, packet):
         """Send a packet out given port"""
