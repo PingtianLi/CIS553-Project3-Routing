@@ -45,11 +45,14 @@ class LSrouter(Router):
         # Distribute information on map
         elif packet.isRouting():
             content = loads(packet.content)
-            print(self.addr, content)
+            #print(self.addr, content)
+            print(self.addr)
             if packet.srcAddr not in self.packets or content['sqn'] > loads(self.packets[packet.srcAddr].content)['sqn']:
                 self.packets[packet.srcAddr] = packet
                 for n in self.neighbors:
+                    # print(n)
                     #p = Packet(2, self.addr, n, content=dumps(content))
+                    print(port, self.neighbors[n]['port'])
                     if port != self.neighbors[n]['port']:
                         self.send(self.neighbors[n]['port'], packet)
 
@@ -123,11 +126,13 @@ class LSrouter(Router):
         if endpoint not in self.neighbors:
             self.neighbors[endpoint] = {"port": port, "sqn": 0, "cost": cost}
             # self.graph[self.addr] = {endpoint: cost}
-
+        content = {
+            'sqn': self.mysqn,
+            'neighbors': self.neighbors
+        }
         for k, v in self.neighbors.iteritems():
-            packet = Packet(Packet.ROUTING, self.addr, k)
-            content = dumps(self.neighbors)
-            self.send(v['port'], packet)
+            p = Packet(Packet.ROUTING, self.addr, k, dumps(content))
+            self.send(v['port'], p)
 
     def handleRemoveLink(self, port):
         """TODO: handle removed link"""
