@@ -36,20 +36,17 @@ class LSrouter(Router):
         nextNeighbors = content['neighbors']
 
         for neighbor in nextNeighbors:
-            newCost = self.tentative[packet.srcAddr]['cost'] + nextNeighbors[neighbor]['cost']
-            if neighbor not in self.confirmed and not in self.tentative:
-                self.tentative[neighbor] = {
-                    'cost': newCost,
-                    'nextHop': packet.srcAddr
-                }
-            elif neighbor in self.tentative and newCost < self.tentative[neighbor]['cost']:
+            newCost = self.tentative[packet.srcAddr]['cost'] + nextNeighbors[neighbor]['cost'] #src not src
+            if (neighbor not in self.confirmed and not in self.tentative) or
+               (neighbor in self.tentative and newCost < self.tentative[neighbor]['cost']):
                 self.tentative[neighbor] = {
                     'cost': newCost,
                     'nextHop': packet.srcAddr
                 }
         if self.tentative: # check if not empty
-            # do something
-            pass
+            lowestCostEntry = min(self.tentative, key=lambda k: self.tentative[k]['cost'])
+            confirmed[lowestCostEntry] = tentative[lowestCostEntry]
+            del self.tentative[lowestCostEntry]
 
 
     def handleNewLink(self, port, endpoint, cost):
