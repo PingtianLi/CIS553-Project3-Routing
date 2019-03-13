@@ -43,7 +43,7 @@ class LSrouter(Router):
                     'cost': newCost,
                     'nextHop': packet.srcAddr
                 }
-        if self.tentative: # check if not empty
+        while self.tentative: # check if not empty
             lowestCostEntry = min(self.tentative, key=lambda k: self.tentative[k]['cost'])
             confirmed[lowestCostEntry] = tentative[lowestCostEntry]
             del self.tentative[lowestCostEntry]
