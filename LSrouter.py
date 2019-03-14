@@ -35,29 +35,23 @@ class LSrouter(Router):
     def handlePacket(self, port, packet):
         """TODO: process incoming packet"""
 
-        # nextNeighbors = content['neighbors']
-        # packet_graph = content['graph']
-
         if packet.isTraceroute():
+            # print(self.addr, self.confirmed.keys())  # , packet.dstAddr)
+
             if packet.dstAddr in self.confirmed:
                 self.send(self.neighbors[self.confirmed[packet.dstAddr]["nextHop"]]['port'], packet)
 
         # Distribute information on map
         elif packet.isRouting():
             content = loads(packet.content)
-            #print(self.addr, content)
-            print(self.addr)
+            # Add packet into self.packets if it's newer
             if packet.srcAddr not in self.packets or content['sqn'] > loads(self.packets[packet.srcAddr].content)['sqn']:
                 self.packets[packet.srcAddr] = packet
                 for n in self.neighbors:
-                    # print(n)
-                    #p = Packet(2, self.addr, n, content=dumps(content))
-                    print(port, self.neighbors[n]['port'])
                     if port != self.neighbors[n]['port']:
                         self.send(self.neighbors[n]['port'], packet)
 
             # Create + update map
-            self.graph = {}
             for packet_addr in self.packets:
                 curr_content = loads(self.packets[packet_addr].content)
                 curr_cost = curr_content['neighbors'][self.addr]['cost']
@@ -72,20 +66,6 @@ class LSrouter(Router):
                 else:
                     self.graph[self.addr][packet_addr] = curr_cost
 
-                #     if self.addr not in self.graph:
-                #         self.graph[self.addr] = {packet_addr: self.packets[packet_addr].content['cost']}
-                #     else:
-                #         self.graph[self.addr][packet_addr] = self.packets[packet_addr].content['cost']
-                # else:
-                #     if self.addr not in self.graph
-
-            # Populate self.tentative with this packet's neighbors
-            # for neighbor in nextNeighbors:
-            #     # Update self.graph
-            #     if packet.srcAddr not in self.graph:
-            #         self.graph[packet.srcAddr] = {neighbor: packet_graph[packet.srcAddr][neighbor]}
-            #     else:
-            #         self.graph[packet.srcAddr][neighbor] = min(self.graph[packet.srcAddr][neighbor], packet_graph[packet.srcAddr][neighbor])
             self.tentative = {}
             self.confirmed = {}
 
@@ -95,37 +75,49 @@ class LSrouter(Router):
                 'nextHop': None
             }
 
+            visited = set()
+
             # Djikstra's, updating shortest path
             while self.tentative:
                 # Pop lowest cost member
                 lowestCostEntry = min(self.tentative, key=lambda k: self.tentative[k]['cost'])
-
+                print(self.addr, lowestCostEntry, packet.srcAddr, self.confirmed.keys())
                 # Iterate through neighbors of lowestCostEntry, update
-                curr_neighbors = self.graph[lowestCostEntry]
-                for n in curr_neighbors:
-                    # print(self.tentative, self.confirmed, curr_neighbors)
-
-                    newCost = self.tentative[lowestCostEntry]['cost'] + curr_neighbors[n]
+                for n in self.graph[lowestCostEntry]:
+                    newCost = self.tentative[lowestCostEntry]['cost'] + self.graph[lowestCostEntry][n]
                     tentativeCost = float('inf')
                     if n in self.tentative:
                         tentativeCost = self.tentative[n]['cost']
 
                     # If found lower cost path, update tentative and graph
                     if (n not in self.confirmed and n not in self.tentative) or (n in self.tentative and newCost < tentativeCost):
+
                         self.tentative[n] = {
                             'cost': newCost,
-                            'nextHop': lowestCostEntry
+                            'nextHop': packet.srcAddr
                         }
 
                 # Update self.confirmed and pop
-                self.confirmed[lowestCostEntry] = self.tentative[lowestCostEntry]
+                if lowestCostEntry not in visited:
+                    self.confirmed[lowestCostEntry] = self.tentative[lowestCostEntry]
+                visited.add(lowestCostEntry)
+                # print(self.confirmed)
                 del self.tentative[lowestCostEntry]
 
     def handleNewLink(self, port, endpoint, cost):
         """TODO: handle new link"""
         if endpoint not in self.neighbors:
             self.neighbors[endpoint] = {"port": port, "sqn": 0, "cost": cost}
-            # self.graph[self.addr] = {endpoint: cost}
+
+        if self.addr not in self.graph:
+            self.graph[self.addr] = {endpoint: cost}
+        else:
+            self.graph[self.addr][endpoint] = cost
+        if endpoint not in self.graph:
+            self.graph[endpoint] = {self.addr: cost}
+        else:
+            self.graph[endpoint][self.addr] = cost
+
         content = {
             'sqn': self.mysqn,
             'neighbors': self.neighbors
@@ -158,4 +150,4 @@ class LSrouter(Router):
 
     def debugString(self):
         """TODO: generate a string for debugging in network visualizer"""
-        return ""
+        return dumps(self.neighbors)
